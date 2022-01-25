@@ -37,8 +37,8 @@ gameTime{
 }
 
 reset{
-	//if the player dies, if the in-game timer is reset, or if the player's rank decreases
-	if (current.hp == 0 || current.time < old.time || current.rank < old.rank){
+	//if the in-game timer is reset
+	if (current.time < old.time){
 		return true;
 	}
 }
