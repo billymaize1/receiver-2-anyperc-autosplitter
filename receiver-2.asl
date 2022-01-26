@@ -1,62 +1,106 @@
-state("Receiver2"){
+state("Receiver2") {}
 
-	//the player's current rank: 0=intro, 1=baseline (where speedruns start), 2=asleep, 3=sleepwalker, 4=liminal, 5=awake
-	byte rank : "UnityPlayer.dll", 0x017E1BD8, 0x8, 0x10, 0x30, 0x18, 0x28, 0x150, 0x94;
+startup
+{
+	vars.Log = (Action<object>)(output => print("[Receiver 2] " + output));
 
-	//global timer pointer, in seconds
-	float time : "UnityPlayer.dll", 0x0017E1BD8, 0x8, 0x10, 0x30, 0x18, 0x28, 0x30, 0x54;
+	using (var prov = new Microsoft.CSharp.CSharpCodeProvider())
+	{
+		var param = new System.CodeDom.Compiler.CompilerParameters
+		{
+			GenerateInMemory = true,
+			ReferencedAssemblies = { "LiveSplit.Core.dll", "System.dll", "System.Core.dll", "System.Xml.dll", "System.Xml.Linq.dll" }
+		};
 
-	//player HP: only ever uses 2 values, 0 (dead) and 1 (alive).
-	byte hp : "UnityPlayer.dll", 0x017C1280, 0x20, 0x10, 0x20, 0x120, 0x18;
+		string mono = File.ReadAllText(@"Components\mono.cs"), helpers = File.ReadAllText(@"Components\mono_helpers.cs");
+		var asm = prov.CompileAssemblyFromSource(param, mono, helpers);
+		vars.Unity = Activator.CreateInstance(asm.CompiledAssembly.GetType("Unity.Game"));
+	}
 
-	//the time displayed in the pause menu, in whole seconds
-	int menuTime : "UnityPlayer.dll", 0x017C1A60, 0x3F0, 0x40, 0x68, 0x28, 0x78, 0x2E8, 0x134;
-
-}
-
-init{
 	refreshRate = 30;
+	vars.canStart = false;
 }
 
-start{
-	/*
-	start is delayed by 2 seconds to prevent multiple livesplit timer resets;
-	when the player selects "yes" to restarting or dies, the in-game timer resets, 
-	then increments to 1, then resets again before keeping time as it should.
-	the final condition is to prevent the timer from starting itself
-	in the middle of a loaded session (i.e. on game startup)
-	*/
-	if(current.rank == 1 && current.hp == 1 && current.time >= 2 && current.time <= 3){
+onStart
+{
+	vars.canStart = false;
+}
+
+init
+{
+	vars.Unity.TryOnLoad = (Func<dynamic, bool>)(helper =>
+	{
+		var lst = helper.GetClass("mscorlib", "List`1"); // List<T>
+		var rpd = helper.GetClass("Wolfire.Receiver2", 0x200012C); // RankingProgressionData
+		var rpgm = helper.GetClass("Wolfire.Receiver2", 0x200012D); // RankingProgressionGameMode
+		var lms = helper.GetClass("Wolfire.Receiver2", 0x2000187); // LevelManagerScript
+		var gss = helper.GetClass("Wolfire.Receiver2", 0x200024D); // GameSessionStatistic
+		var rcs = helper.GetClass("Wolfire.Receiver2", 0x2000298); // ReceiverCoreScript
+		// var lah = helper.GetClass("Wolfire.Receiver2", 0x2000195); // LocalAimHandler
+
+		vars.Unity.Make<float>(lms.Static, lms["instance"], lms["load_queue"], lst["_size"]).Name = "loadQueue";
+		vars.Unity.Make<int>(rcs.Static, rcs["instance"], rcs["game_mode"], rpgm["checkpoint_rank"]).Name = "rank";
+		vars.Unity.Make<int>(rcs.Static, rcs["instance"], rcs["game_mode"], rpgm["progression_data"], rpd["regular_tapes_picked_up"]).Name = "tapesCollected";
+		// vars.Unity.Make<int>(rcs.Static, rcs["instance"], rcs["game_mode"], rpgm["progression_data"], rpd["regular_tapes_consumed"]).Name = "tapesConsumed";
+		vars.Unity.Make<float>(rcs.Static, rcs["instance"], rcs["session_data"], gss["session_time"]).Name = "time";
+		vars.Unity.Make<ulong>(rcs.Static, rcs["instance"], rcs["session_data"], gss["session_start_date_time"]).Name = "startTime";
+		// vars.Unity.Make<bool>(lah.Static, lah["player_instance"], lah["dead"]).Name = "dead";
+
 		return true;
-	}
+	});
+
+	vars.Unity.Load(game);
 }
 
-gameTime{
-	TimeSpan gt = TimeSpan.FromSeconds(current.time);
-	return gt;
+update
+{
+	if (!vars.Unity.Loaded) return false;
+
+	vars.Unity.Watchers.UpdateAll(game);
+
+	// current.dead = vars.Unity.Watchers["dead"].Current;
+	current.loadQueue = vars.Unity.Watchers["loadQueue"].Current;
+	current.rank = vars.Unity.Watchers["rank"].Current;
+	current.time = vars.Unity.Watchers["time"].Current;
+	current.startTime = vars.Unity.Watchers["startTime"].Current;
+	current.tapesCollected = vars.Unity.Watchers["tapesCollected"].Current;
 }
 
-reset{
-	//if the in-game timer is reset
-	if (current.time < old.time){
-		return true;
-	}
+start
+{
+	if (old.loadQueue > 0 && current.loadQueue == 0)
+		vars.canStart = true;
+
+	return vars.canStart && old.time < current.time;
 }
 
-split{
-	if (current.rank == (old.rank + 1)){
-			return true;
-	}
+split
+{
+	return current.rank == old.rank + 1 ||
+	       current.rank == 5 && old.tapesCollected == 2 && current.tapesCollected == 3;
+}
 
-	/*
-	for the final split, where the player's rank won't increase.
-	will split when the player opens the pause menu (to view the final time)
-	I couldn't find a memory pointer that stores the amount of tapes collected,
-	which would be useful to see if the player has actually reached the win state,
-	but opening the menu to check the timer at the end is a requirement in the speedrun rules.
-	just don't pause on the last level until you've gotten all 3 tapes!
-	*/
-	else if (current.rank == 5 && current.menuTime > old.menuTime){
-		return true;
-	}
+reset
+{
+	return old.startTime < current.startTime;
+}
+
+gameTime
+{
+	return TimeSpan.FromSeconds(current.time);
+}
+
+isLoading
+{
+	return true;
+}
+
+exit
+{
+	vars.Unity.Reset();
+}
+
+shutdown
+{
+	vars.Unity.Reset();
 }
