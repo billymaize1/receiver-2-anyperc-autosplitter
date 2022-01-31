@@ -30,23 +30,33 @@ init
 {
 	vars.Unity.TryOnLoad = (Func<dynamic, bool>)(helper =>
 	{
-		var lst = helper.GetClass("mscorlib", "List`1"); // List<T>
-		var rpd = helper.GetClass("Wolfire.Receiver2", 0x200012C); // RankingProgressionData
-		var rpgm = helper.GetClass("Wolfire.Receiver2", 0x200012D); // RankingProgressionGameMode
-		var lms = helper.GetClass("Wolfire.Receiver2", 0x2000187); // LevelManagerScript
-		var gss = helper.GetClass("Wolfire.Receiver2", 0x200024D); // GameSessionStatistic
-		var rcs = helper.GetClass("Wolfire.Receiver2", 0x2000298); // ReceiverCoreScript
-		// var lah = helper.GetClass("Wolfire.Receiver2", 0x2000195); // LocalAimHandler
+		try
+		{
+			var lst = helper.GetClass("mscorlib", "List`1"); // List<T>
 
-		vars.Unity.Make<float>(lms.Static, lms["instance"], lms["load_queue"], lst["_size"]).Name = "loadQueue";
-		vars.Unity.Make<int>(rcs.Static, rcs["instance"], rcs["game_mode"], rpgm["checkpoint_rank"]).Name = "rank";
-		vars.Unity.Make<int>(rcs.Static, rcs["instance"], rcs["game_mode"], rpgm["progression_data"], rpd["regular_tapes_picked_up"]).Name = "tapesCollected";
-		// vars.Unity.Make<int>(rcs.Static, rcs["instance"], rcs["game_mode"], rpgm["progression_data"], rpd["regular_tapes_consumed"]).Name = "tapesConsumed";
-		vars.Unity.Make<float>(rcs.Static, rcs["instance"], rcs["session_data"], gss["session_time"]).Name = "time";
-		vars.Unity.Make<ulong>(rcs.Static, rcs["instance"], rcs["session_data"], gss["session_start_date_time"]).Name = "startTime";
-		// vars.Unity.Make<bool>(lah.Static, lah["player_instance"], lah["dead"]).Name = "dead";
+			var lms = helper.GetClass("Wolfire.Receiver2", 0x2000187); // LevelManagerScript
 
-		return true;
+			var rcs = helper.GetClass("Wolfire.Receiver2", 0x2000298); // ReceiverCoreScript
+			var rpgm = helper.GetClass("Wolfire.Receiver2", 0x200012D); // RankingProgressionGameMode
+			var rpd = helper.GetClass("Wolfire.Receiver2", 0x200012C); // RankingProgressionData
+			var gss = helper.GetClass("Wolfire.Receiver2", 0x200024D); // GameSessionStatistic
+			// var lah = helper.GetClass("Wolfire.Receiver2", 0x2000195); // LocalAimHandler
+
+			vars.Unity.Make<float>(lms.Static, lms["instance"], lms["load_queue"], lst["_size"]).Name = "loadQueue";
+			vars.Unity.Make<int>(rcs.Static, rcs["instance"], rcs["game_mode"], rpgm["checkpoint_rank"]).Name = "rank";
+			vars.Unity.Make<int>(rcs.Static, rcs["instance"], rcs["game_mode"], rpgm["progression_data"], rpd["regular_tapes_picked_up"]).Name = "tapesCollected";
+			// vars.Unity.Make<int>(rcs.Static, rcs["instance"], rcs["game_mode"], rpgm["progression_data"], rpd["regular_tapes_consumed"]).Name = "tapesConsumed";
+			vars.Unity.Make<float>(rcs.Static, rcs["instance"], rcs["session_data"], gss["session_time"]).Name = "time";
+			vars.Unity.Make<ulong>(rcs.Static, rcs["instance"], rcs["session_data"], gss["session_start_date_time"]).Name = "startTime";
+			// vars.Unity.Make<bool>(lah.Static, lah["player_instance"], lah["dead"]).Name = "dead";
+
+			return true;
+		}
+		catch (InvalidOperationException)
+		{
+			helper.ClearImages();
+			return false;
+		}
 	});
 
 	vars.Unity.Load(game);
@@ -64,6 +74,9 @@ update
 	current.time = vars.Unity.Watchers["time"].Current;
 	current.startTime = vars.Unity.Watchers["startTime"].Current;
 	current.tapesCollected = vars.Unity.Watchers["tapesCollected"].Current;
+
+	// if (old.tapesCollected != current.tapesCollected)
+	// 	vars.Log(old.tapesCollected + " -> " + current.tapesCollected);
 }
 
 start
