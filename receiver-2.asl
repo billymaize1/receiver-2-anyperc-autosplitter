@@ -90,7 +90,7 @@ start
 split
 {
 	return current.rank == old.rank + 1 ||
-	       current.rank == 5 && old.tapesCollected == 2 && current.tapesCollected == 3;
+	       current.rank == 5 && old.tapesCollected == 22 && current.tapesCollected == 23;
 }
 
 reset
