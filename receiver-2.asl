@@ -3,19 +3,7 @@ state("Receiver2") {}
 startup
 {
 	vars.Log = (Action<object>)(output => print("[Receiver 2] " + output));
-
-	using (var prov = new Microsoft.CSharp.CSharpCodeProvider())
-	{
-		var param = new System.CodeDom.Compiler.CompilerParameters
-		{
-			GenerateInMemory = true,
-			ReferencedAssemblies = { "LiveSplit.Core.dll", "System.dll", "System.Core.dll", "System.Xml.dll", "System.Xml.Linq.dll" }
-		};
-
-		string mono = File.ReadAllText(@"Components\mono.cs"), helpers = File.ReadAllText(@"Components\mono_helpers.cs");
-		var asm = prov.CompileAssemblyFromSource(param, mono, helpers);
-		vars.Unity = Activator.CreateInstance(asm.CompiledAssembly.GetType("Unity.Game"));
-	}
+	vars.Unity = Activator.CreateInstance(Assembly.LoadFrom(@"Components\ULibrary.dll").GetType("ULibrary.Unity"));
 
 	refreshRate = 30;
 	vars.canStart = false;
