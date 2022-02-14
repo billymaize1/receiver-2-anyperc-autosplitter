@@ -54,14 +54,14 @@ update
 {
 	if (!vars.Unity.Loaded) return false;
 
-	vars.Unity.Watchers.UpdateAll(game);
+	vars.Unity.Update();
 
-	// current.dead = vars.Unity.Watchers["dead"].Current;
-	current.loadQueue = vars.Unity.Watchers["loadQueue"].Current;
-	current.rank = vars.Unity.Watchers["rank"].Current;
-	current.time = vars.Unity.Watchers["time"].Current;
-	current.startTime = vars.Unity.Watchers["startTime"].Current;
-	current.tapesCollected = vars.Unity.Watchers["tapesCollected"].Current;
+	// current.dead = vars.Unity["dead"].Current;
+	current.loadQueue = vars.Unity["loadQueue"].Current;
+	current.rank = vars.Unity["rank"].Current;
+	current.time = vars.Unity["time"].Current;
+	current.startTime = vars.Unity["startTime"].Current;
+	current.tapesCollected = vars.Unity["tapesCollected"].Current;
 
 	// if (old.tapesCollected != current.tapesCollected)
 	// 	vars.Log(old.tapesCollected + " -> " + current.tapesCollected);
